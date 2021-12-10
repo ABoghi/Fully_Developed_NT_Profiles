@@ -1,7 +1,7 @@
 .false.     ! flag
-2000         ! ny
-100000        ! niter
+2001        ! ny
+1000000     ! niter
 200         ! Re_tau 
-1.d-2       ! alphaU 
-1.d-2	    ! alphaKt 
-1.d-2       ! alphaeps
+7.5d-1       ! alphaU 
+7.5d-1	    ! alphaKt 
+7.5d-1       ! alphaeps

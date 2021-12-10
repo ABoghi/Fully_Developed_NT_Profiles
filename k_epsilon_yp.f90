@@ -16,7 +16,7 @@ Program main_K_epsilon
     real*8,allocatable :: Peps(:),Teps(:),Deps(:),epseps(:)
     integer j,ny,iter,niter
     real*8  Re_tau,sigmak,sigmae,Ce1,Ce2,Cmu,f1,alphaU,alphaKt,alphaeps
-    real*8 RU,RKt,Reps,dy,aU_w,aU_e,sU,aK_w,aK_e,sK,aE_w,aE_e,sE
+    real*8 resU,resK,resE,dy,aU_w,aU_e,sU,aK_w,aK_e,sK,aE_w,aE_e,sE, conv_fac
     logical flag
 
     open(1,file='imp_ke.dat')
@@ -39,6 +39,10 @@ Program main_K_epsilon
 
     call nagano_takawa_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu,f1)
 
+    conv_fac = 1.d0
+    open(11,file='residuals_momentum.csv')
+    write(11,*) '"iter","resU","resK","resE"'
+
     do iter=1,niter
 
         U0 = U
@@ -49,6 +53,8 @@ Program main_K_epsilon
         call ddy(ny,nut,dnutdy,dy)
         call ddy(ny,U,dUdy,dy)
         U(1) = 0.d0
+        !call u_coefficients(aU_w,aU_e,sU,nut(1),dnutdy(1),dy,Re_tau)
+        !U(1) =  sU + (aU_e + aU_w)*U(2) + 2.d0*aU_w*dy 
         Kt(1) = 0.d0
         eps(1) = 2.d0*( (-3.d0*dsqrt(dabs(Kt(1)))+4.d0*dsqrt(dabs(Kt(2)))-dsqrt(dabs(Kt(3))))/(2.d0*dy) )**2.d0
         do j =2,ny-1
@@ -66,11 +72,18 @@ Program main_K_epsilon
         call E_coefficients(aE_w,aE_e,sE,eps(ny),Kt(ny),nut(ny),dnutdy(ny),dUdy(ny),dy,sigmae,Ce1,f1,Ce2,f2(ny))
         eps(ny) = sE + (aE_e + aE_w)*eps(ny-1)
 
+        call residuals(ny,U,U0,resU)
+        call residuals(ny,Kt,Kt0,resK)
+        call residuals(ny,eps,eps0,resE)
+        write(11,102) conv_fac*iter,',',resU,',',resK,',',resE
+
         U = dabs(alphaU*U +(1.d0-alphaU)*U0)
         Kt = dabs(alphaKt*Kt +(1.d0-alphaKt)*Kt0)
         eps = dabs(alphaeps*eps +(1.d0-alphaeps)*eps0)
-        print*, ' completed =', 100*real(iter)/real(niter)
+        print*, ' completed =', 100*real(iter)/real(niter), ' resU = ', resU, ' resK = ', resK, ' resE = ', resE
+        
     enddo
+    close(11)
 
     open(1,file='point_ke.dat',form='unformatted')
     write(1) y,U,Kt,eps,nut
@@ -91,6 +104,8 @@ Program main_K_epsilon
 
     101 format(e18.10,A,e18.10,A,e18.10,A,e18.10,A,e18.10,A,e18.10,A,e18.10,A,e18.10,A,e18.10,A,e18.10,A,e18.10,A,e18.10,A,e18.10, &
     A,e18.10)
+
+    102 format(e18.10,A,e18.10,A,e18.10,A,e18.10)
 
     end
 
@@ -230,7 +245,7 @@ subroutine  nagano_takawa_k_epsilon_functions(nut,f2,ny,y,kt,eps,Cmu)
     real*8 Ret(1:ny),fmu(1:ny),dkdy(1:ny),depsdy(1:ny),dy, Ret_min, eps_min
     integer j
 
-    eps_min = 1.d-6
+    eps_min = 1.d-12
 
     do j=1,ny
         if (eps(j) <= eps_min) then
@@ -243,7 +258,7 @@ subroutine  nagano_takawa_k_epsilon_functions(nut,f2,ny,y,kt,eps,Cmu)
         endif
     enddo
 
-    Ret_min = 1.d-6
+    Ret_min = 1.d-12
     do j=1,ny
         if (Ret(j) <= Ret_min) then
             fmu(j)= (1.d0 +4.1d0/Ret_min**0.75d0)*(1.d0 -dexp(-y(j)/26.d0))**2.d0
@@ -272,8 +287,8 @@ subroutine  u_coefficients(aU_w,aU_e,sU,nut,dnutdy,dy,Re_tau)
     real*8, intent(in) :: nut,dnutdy,dy,Re_tau
     real*8, intent(out) :: aU_w,aU_e,sU
 
-    aU_w = ( 1.d0 + nut - dy*dnutdy/2.d0 )/(2.d0*(1.d0+nut))
-    aU_e = ( 1.d0 + nut + dy*dnutdy/2.d0 )/(2.d0*(1.d0+nut))
+    aU_w = 5.d-1 - dy*dnutdy/(4.d0*(1.d0+nut))
+    aU_e = 5.d-1 + dy*dnutdy/(4.d0*(1.d0+nut))
     sU = (dy*dy)/(2.d0*Re_tau*(1.d0+nut))
 
     end
@@ -288,8 +303,8 @@ subroutine  K_coefficients(aK_w,aK_e,sK,eps,nut,dnutdy,dUdy,dy,sigmak)
     real*8, intent(in) :: eps,nut,dnutdy,dUdy,dy,sigmak
     real*8, intent(out) :: aK_w,aK_e,sK
 
-    aK_w = (1.d0 + nut/sigmak - (dy/sigmak)*dnutdy/2.d0)/(2.d0*(1.d0+nut/sigmak))
-    aK_e = (1.d0 + nut/sigmak + (dy/sigmak)*dnutdy/2.d0)/(2.d0*(1.d0+nut/sigmak))
+    aK_w = 5.d-1 - dy*dnutdy/(4.d0*(sigmak+nut))
+    aK_e = 5.d-1 + dy*dnutdy/(4.d0*(sigmak+nut))
     sK = (nut*dUdy*dUdy - eps)*(dy*dy)/(2.d0*(1.d0+nut/sigmak))
 
     end
@@ -303,22 +318,25 @@ subroutine  E_coefficients(aE_w,aE_e,sE,eps,Kt,nut,dnutdy,dUdy,dy,sigmae,Ce1,f1,
     implicit none
     real*8, intent(in) :: eps,Kt,nut,dnutdy,dUdy,dy,sigmae,Ce1,f1,Ce2,f2
     real*8, intent(out) :: aE_w,aE_e,sE
-    real*8 den
+    real*8 K_min, Kb
     logical method1
 
-    method1 = .false.
+    K_min = 1.d-12
+
+    Kb = (dy*dy/(2.d0*(1.d0 +nut/sigmae)))*(Ce1*f1*nut*dUdy*dUdy -Ce2*f2*eps)
+
+    method1 = .true.
     if (method1) then
-        aE_w = ( 1.d0 + nut/sigmae + (dy/sigmae)*dnutdy/2.d0 )/(2.d0*(1.d0 +nut/sigmae) )
-        aE_e = ( 1.d0 + nut/sigmae - (dy/sigmae)*dnutdy/2.d0 )/(2.d0*(1.d0 +nut/sigmae) )
-        if (Kt==0.d0) then
-            sE = 0.d0
+        aE_w = 5.d-1 - dy*dnutdy/(4.d0*(sigmae +nut))
+        aE_e = 5.d-1 + dy*dnutdy/(4.d0*(sigmae +nut))
+        if (Kt<=K_min) then
+            sE = 0.d0*Kb*eps/K_min
         else
-            sE = (dy*dy/(2.d0*(1.d0 +nut/sigmae)))*(Ce1*f1*nut*dUdy*dUdy -Ce2*f2*eps)*eps/Kt
+            sE = Kb*eps/Kt
         endif
     else
-        den = (Kt - (dy*dy/(2.d0*(1.d0 +nut/sigmae)))*(Ce1*f1*nut*dUdy*dUdy -Ce2*f2*eps))
-        aE_w = Kt*( 1.d0 + nut/sigmae + (dy/sigmae)*dnutdy/2.d0 )/(2.d0*(1.d0 +nut/sigmae) )/den
-        aE_e = Kt*( 1.d0 + nut/sigmae - (dy/sigmae)*dnutdy/2.d0 )/(2.d0*(1.d0 +nut/sigmae) )/den
+        aE_w = (5.d-1 - dy*dnutdy/(4.d0*(sigmae +nut)))/(1.d0 - Kb/Kt)
+        aE_e = (5.d-1 + dy*dnutdy/(4.d0*(sigmae +nut)))/(1.d0 - Kb/Kt)
         sE = 0.d0 
     endif
     
@@ -362,4 +380,32 @@ subroutine  output_fields(ny,U,Kt,eps,nut,f1,f2,dy,sigmaK,sigmaE,Ce1,Ce2,tau_mu,
     epsEps(2:ny) = -f2(2:ny)*Ce2*(eps(2:ny)/Kt(2:ny))*eps(2:ny)
     epsEps(1) = epsEps(2)
     
+    end
+
+!!!*************************************************
+!!!*						         	           *
+!!!*               residuals                   *
+!!!*								               *
+!!!*************************************************
+
+subroutine  residuals(ny,A,A0,resA)
+    implicit none
+    integer, intent(in) :: ny
+    real*8, intent(in) :: A(1:ny),A0(1:ny)
+    real*8, INTENT(OUT) :: resA
+    real*8 sumN, sumD
+    integer j
+
+    sumN = 0
+    do j=1,ny
+        sumN = sumN +dabs(A(j)- A0(j))
+    enddo
+
+    sumD = 0
+    do j=1,ny
+        sumD = sumD + dabs(A0(j))
+    enddo
+
+    resA = sumN/sumD
+
     end
