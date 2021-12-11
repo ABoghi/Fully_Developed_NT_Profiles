@@ -86,7 +86,7 @@ Program main_K_epsilon
     close(11)
 
     open(1,file='point_ke.dat',form='unformatted')
-    write(1) y,U,Kt,eps,nut
+    write(1) y,U,Kt,eps,nut,f2
     close(1)
 
     allocate(tau_mu(1:ny),tau_R(1:ny),Pk(1:ny),Tk(1:ny),Dk(1:ny))
@@ -122,7 +122,7 @@ subroutine initialization(flag,ny,Re_tau,y,U,Kt,eps,dy)
     real*8, intent(in) :: Re_tau
     real*8, intent(out) :: y(1:ny),U(1:ny),kt(1:ny),eps(1:ny),dy
     integer j
-    real*8 Kappa, Cmu,nut(1:ny),y_mid
+    real*8 Kappa, Cmu,nut(1:ny),f2(1:ny),y_mid
 
     Kappa = 4.d-1
     Cmu = 9.d-2
@@ -134,7 +134,7 @@ subroutine initialization(flag,ny,Re_tau,y,U,Kt,eps,dy)
         print *,'continuation'
   
         open(1,file='point_ke.dat',form='unformatted')
-        read(1) y(1:ny),U(1:ny),Kt(1:ny),eps(1:ny),nut(1:ny)
+        read(1) y(1:ny),U(1:ny),Kt(1:ny),eps(1:ny),nut(1:ny),f2(1:ny)
         close(1)
   
     else

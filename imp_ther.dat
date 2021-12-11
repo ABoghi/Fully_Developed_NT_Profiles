@@ -1,0 +1,6 @@
+.false.     ! flag
+2001        ! ny
+1000000     ! niter
+200         ! Re_tau 
+7.5d-1       ! alphaT 
+7.5d-1	    ! alphaTh2
