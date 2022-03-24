@@ -1,7 +1,7 @@
 .false.     ! flag
-2001        ! ny
+4001        ! ny
 1000000     ! niter
-200         ! Re_tau 
+400         ! Re_tau 
 7.5d-1       ! alphaU 
 7.5d-1	    ! alphaKt 
 7.5d-1       ! alphaeps
