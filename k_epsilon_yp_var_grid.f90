@@ -41,7 +41,7 @@ Program main_K_epsilon
     call nagano_takawa_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu,f1)
 
     conv_fac = 1.d0
-    open(11,file='residuals_momentum.csv')
+    open(11,file='residuals_momentum_var.csv')
     write(11,*) '"iter","resU","resK","resE"'
 
     do iter=1,niter
@@ -99,7 +99,7 @@ Program main_K_epsilon
 
     call output_fields(ny,U,Kt,eps,nut,f1,f2,deta,sigmaK,sigmaE,Ce1,Ce2,tau_mu,tau_R,Pk,Tk,Dk,Peps,Teps,Deps,epseps,detady,d2etady2)
 
-    open(14,file='momentumNT.csv',form='formatted')
+    open(14,file='momentumNT_var.csv',form='formatted')
     write(14,*) '"y","U","k","epsilon","nut","tau_mu","tau_R","Pk","Tk","Dk","Peps","Teps","Deps","epsEps"'
     do j=1,ny
        write(14,101) y(j),',',U(j),',',Kt(j),',',eps(j),',',nut(j),',',tau_mu(j),',',tau_R(j),',',Pk(j),',',Tk(j),',',Dk(j),',', &
